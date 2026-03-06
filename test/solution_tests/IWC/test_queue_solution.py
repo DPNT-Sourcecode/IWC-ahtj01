@@ -166,5 +166,3 @@ def test_bank_statements_are_deferred() -> None:
         call_dequeue().expect("bank_statements", 1),
 
     ])
-
-
