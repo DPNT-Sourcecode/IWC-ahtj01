@@ -99,6 +99,13 @@ class Queue:
         existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
+    def update_timestamp_for_existing_task(self, existing_task: TaskSubmission, new_task: TaskSubmission) -> None:
+            earliest_task_datetime: datetime = min(
+                self._timestamp_for_task(existing_task),
+                self._timestamp_for_task(new_task)
+            )
+            existing_task.timestamp = str(earliest_task_datetime.astimezone())
+
     def enqueue(self, item: TaskSubmission) -> int:
         if item.timestamp is None:
             return self.size
@@ -109,11 +116,7 @@ class Queue:
         for task in tasks:
             existing_task = self.check_for_existing_task(task)
             if existing_task is not None:
-                earliest_task_datetime: datetime = min(
-                    self._timestamp_for_task(existing_task),
-                    self._timestamp_for_task(item)
-                )
-                existing_task.timestamp = str(earliest_task_datetime.astimezone())
+                self.update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
                 continue
 
             metadata = task.metadata
@@ -154,6 +157,9 @@ class Queue:
             else:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
+
+        # fewer than 3 -> back of global queue
+        # more than 3 -> after all their other tasks
 
         self._queue.sort(
             key=lambda i: (
@@ -264,5 +270,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
