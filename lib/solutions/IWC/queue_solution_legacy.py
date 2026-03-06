@@ -167,9 +167,6 @@ class Queue:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
 
-        # fewer than 3 -> back of global queue
-        # more than 3 -> after all their other tasks
-
         self._queue.sort(
             key=lambda i: (
                 self._priority_for_task(i),
