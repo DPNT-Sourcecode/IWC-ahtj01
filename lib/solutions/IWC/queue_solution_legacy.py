@@ -200,6 +200,15 @@ class Queue:
         # we are bank statements, and the queue age is > max deferral
         # are we the affected task? if so, use default execution order
 
+        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
+        last_task = sorted_tasks_by_timestamp[-1]
+        task_age = self._get_time_in_seconds_between_tasks(task, last_task)
+
+        if task_age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS:
+            return provider.execution_order or DEFAULT_EXECUTION_ORDER
+
+        return DEFAULT_EXECUTION_ORDER
+
 
     def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
@@ -298,5 +307,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
