@@ -90,7 +90,24 @@ class Queue:
             return datetime.fromisoformat(timestamp).replace(tzinfo=None)
         return timestamp
 
+    def check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
+        if len(self._queue) == 0:
+            return None
+
+        for task in self._queue:
+            if task.user_id == item.user_id and task.provider == item.provider:
+                return task
+
+        return None
+
     def enqueue(self, item: TaskSubmission) -> int:
+
+        # get existing task for user and provider
+        # if it exists, compare the date times, take the earliest
+        # - "Timestamp Ordering": If two tasks have equal priority, the one with a older timestamp must be processed first.
+
+        existing_task = self.check_for_existing_task(item)
+
         # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
 
@@ -243,3 +260,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
