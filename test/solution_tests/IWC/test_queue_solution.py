@@ -124,18 +124,18 @@ def test_tasks_order_by_earliest_timestamp() -> None:
 def test_2_users_with_3_tasks_orders_by_timestamp() -> None:
     run_queue([
         call_enqueue("companies_house", 1, iso_ts(delta_minutes=5)).expect(1),
-        call_enqueue("bank_statements", 2, iso_ts(delta_minutes=0)).expect(2),
+        call_enqueue("companies_house", 2, iso_ts(delta_minutes=0)).expect(2),
         call_enqueue("id_verification", 1, iso_ts(delta_minutes=0)).expect(3),
-        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(4),
+        call_enqueue("credit_check", 1, iso_ts(delta_minutes=0)).expect(4),
         call_enqueue("id_verification", 2, iso_ts(delta_minutes=0)).expect(5),
-        call_enqueue("companies_house", 2, iso_ts(delta_minutes=0)).expect(6),
+        call_enqueue("credit_check", 2, iso_ts(delta_minutes=0)).expect(6),
         call_size().expect(6),
-        call_dequeue().expect("bank_statements", 2),
-        call_dequeue().expect("id_verification", 1),
-        call_dequeue().expect("bank_statements", 1),
-        call_dequeue().expect("id_verification", 2),
-        call_dequeue().expect("companies_house", 2),
         call_dequeue().expect("companies_house", 1),
+        call_dequeue().expect("companies_house", 2),
+        call_dequeue().expect("id_verification", 1),
+        call_dequeue().expect("credit_check", 1),
+        call_dequeue().expect("id_verification", 2),
+        call_dequeue().expect("credit_check", 2),
     ])
 
 def test_2_high_priority_groups_order_by_earliest_timestamp() -> None:
@@ -182,3 +182,4 @@ def test_grouped_bank_statements_are_deferred() -> None:
         call_dequeue().expect("bank_statements", 2),
 
     ])
+
