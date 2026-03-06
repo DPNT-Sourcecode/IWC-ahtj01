@@ -103,19 +103,20 @@ class Queue:
         if item.timestamp is None:
             return self.size
 
-        existing_task = self.check_for_existing_task(item)
-        if existing_task is not None:
-            earliest_task_datetime: datetime = min(
-                self._timestamp_for_task(existing_task),
-                self._timestamp_for_task(item)
-            )
-            existing_task.timestamp = str(earliest_task_datetime.astimezone())
-            return self.size
-
         # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
 
         for task in tasks:
+
+            existing_task = self.check_for_existing_task(task)
+            if existing_task is not None:
+                earliest_task_datetime: datetime = min(
+                    self._timestamp_for_task(existing_task),
+                    self._timestamp_for_task(item)
+                )
+                existing_task.timestamp = str(earliest_task_datetime.astimezone())
+                continue
+
             metadata = task.metadata
             metadata.setdefault("priority", Priority.NORMAL)
             metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -264,3 +265,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+

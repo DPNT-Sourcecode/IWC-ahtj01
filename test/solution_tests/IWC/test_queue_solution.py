@@ -99,16 +99,15 @@ def test_duplicate_task_with_10m_delta_removed() -> None:
         call_dequeue().expect("id_verification", 2),
     ])
 
-def test_duplicate_task_with_10m_delta_removed() -> None:
+def test_duplicate_task_with_dependency() -> None:
     run_queue([
-        call_enqueue("companies_house", 1, iso_ts(delta_minutes=5)).expect(1),
-        call_enqueue("id_verification", 1, iso_ts(delta_minutes=10)).expect(1),
-        call_enqueue("bank_statements", 2, iso_ts(delta_minutes=0)).expect(2),
-        call_enqueue("id_verification", 2, iso_ts(delta_minutes=5)).expect(3),
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=2)).expect(1),
+        call_enqueue("id_verification", 1, iso_ts(delta_minutes=4)).expect(2),
+        call_enqueue("credit_check", 1, iso_ts(delta_minutes=0)).expect(4),
         call_size().expect(3),
-        call_dequeue().expect("bank_statements", 2),
-        call_dequeue().expect("bank_statements", 1),
-        call_dequeue().expect("id_verification", 2),
+        call_dequeue().expect("companies_house", 1),
+        call_dequeue().expect("credit_check", 1),
+        call_dequeue().expect("id_verification", 1),
     ])
 
 def test_tasks_order_by_earliest_timestamp() -> None:
@@ -155,3 +154,4 @@ def test_2_high_priority_groups_order_by_earliest_timestamp() -> None:
         call_dequeue().expect("id_verification", 1),
         call_dequeue().expect("bank_statements", 1),
     ])
+
