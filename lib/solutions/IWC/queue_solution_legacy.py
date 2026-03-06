@@ -48,6 +48,8 @@ REGISTERED_PROVIDERS: list[Provider] = [
 ]
 
 class Queue:
+    _queue: list[TaskSubmission] = []
+
     def __init__(self):
         self._queue = []
 
@@ -94,7 +96,7 @@ class Queue:
         if len(self._queue) == 0:
             return None
 
-        existing_task = next((t for t in self._queue if t.name == item.provider and t.user_id == item.user_id), None)
+        existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
     def enqueue(self, item: TaskSubmission) -> int:
@@ -106,7 +108,10 @@ class Queue:
         existing_task = self.check_for_existing_task(item)
         if existing_task is not None:
             earliest_task_datetime = sorted(
-                [self._timestamp_for_task(existing_task.timestamp), self._timestamp_for_task(item.timestamp)]
+                [
+                    self._timestamp_for_task(existing_task),
+                    self._timestamp_for_task(item)
+                ]
             )
             existing_task.timestamp = earliest_task_datetime[0]
             return self.size
@@ -263,6 +268,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
