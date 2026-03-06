@@ -16,11 +16,12 @@ class Provider:
     name: str
     base_url: str
     depends_on: list[str]
+    execution_order: int
 
 MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
 
 COMPANIES_HOUSE_PROVIDER = Provider(
-    name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[]
+    name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[], execution_order=1
 )
 
 
@@ -28,15 +29,16 @@ CREDIT_CHECK_PROVIDER = Provider(
     name="credit_check",
     base_url="https://fake.creditcheck.co.uk",
     depends_on=["companies_house"],
+    execution_order=1
 )
 
 
 BANK_STATEMENTS_PROVIDER = Provider(
-    name="bank_statements", base_url="https://fake.bankstatements.co.uk", depends_on=[]
+    name="bank_statements", base_url="https://fake.bankstatements.co.uk", depends_on=[], execution_order=2
 )
 
 ID_VERIFICATION_PROVIDER = Provider(
-    name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[]
+    name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[], execution_order=1
 )
 
 
@@ -270,6 +272,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
