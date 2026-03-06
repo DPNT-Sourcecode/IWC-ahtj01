@@ -74,7 +74,7 @@ class Queue:
             metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
 
             if task.provider == BANK_STATEMENTS_PROVIDER:
-                metadata['fifo_order'] = sum(t for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER and t.timestamp == task.timestamp)
+                metadata['fifo_order'] = sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER and t.timestamp == task.timestamp)
 
             self._queue.append(task)
         return self.size
@@ -122,6 +122,7 @@ class Queue:
 
         next_task = self._queue[0]
         if self._is_task_past_max_deferral(earliest_bank_statements_task):
+            # remove the task
             self._queue = [t for t in self._queue if t.provider != earliest_bank_statements_task.provider and t.user_id != earliest_bank_statements_task.user_id]
             return TaskDispatch(
                 provider=earliest_bank_statements_task.provider,
@@ -322,4 +323,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
