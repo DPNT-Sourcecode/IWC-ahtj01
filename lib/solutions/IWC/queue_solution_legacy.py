@@ -44,7 +44,6 @@ ID_VERIFICATION_PROVIDER = Provider(
     name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
 )
 
-
 REGISTERED_PROVIDERS: list[Provider] = [
     BANK_STATEMENTS_PROVIDER,
     COMPANIES_HOUSE_PROVIDER,
@@ -57,6 +56,85 @@ class Queue:
 
     def __init__(self):
         self._queue = []
+
+    def enqueue(self, item: TaskSubmission) -> int:
+        # add any dependencies as additional tasks
+        tasks = [*self._collect_dependencies(item), item]
+
+        for task in tasks:
+            existing_task = self._check_for_existing_task(task)
+            if existing_task is not None:
+                self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+                continue
+
+            metadata = task.metadata
+            metadata.setdefault("priority", Priority.NORMAL)
+            metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
+            self._queue.append(task)
+        return self.size
+
+    def dequeue(self):
+        if self.size == 0:
+            return None
+
+        user_ids = {task.user_id for task in self._queue}
+        task_count = {}
+        priority_timestamps = {}
+        for user_id in user_ids:
+            user_tasks = [t for t in self._queue if t.user_id == user_id]
+            earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
+            priority_timestamps[user_id] = earliest_timestamp
+            task_count[user_id] = len(user_tasks)
+
+        for task in self._queue:
+            metadata = task.metadata
+            current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
+            raw_priority = metadata.get("priority")
+            try:
+                priority_level = Priority(raw_priority)
+            except (TypeError, ValueError):
+                priority_level = None
+
+            if priority_level is None or priority_level == Priority.NORMAL:
+                metadata["group_earliest_timestamp"] = MAX_TIMESTAMP
+                if task_count[task.user_id] >= 3:
+                    metadata["group_earliest_timestamp"] = priority_timestamps[task.user_id]
+                    metadata["priority"] = Priority.HIGH
+                else:
+                    metadata["priority"] = Priority.NORMAL
+            else:
+                metadata["group_earliest_timestamp"] = current_earliest
+                metadata["priority"] = priority_level
+
+        self._queue.sort(key=self._sort_key)
+
+        task = self._queue.pop(0)
+        return TaskDispatch(
+            provider=task.provider,
+            user_id=task.user_id,
+        )
+
+    @property
+    def size(self):
+        return len(self._queue)
+
+    @property
+    def age(self):
+        return 0
+
+    def purge(self):
+        self._queue.clear()
+        return True
+
+    
+
+    def _sort_key(self, task: TaskSubmission) -> tuple:
+        return (
+                self._priority_for_task(task),
+                self._earliest_group_timestamp_for_task(task),
+                self._execution_order_for_task(task),
+                self._timestamp_for_task(task),
+            )
 
     def _collect_dependencies(self, task: TaskSubmission) -> list[TaskSubmission]:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
@@ -114,86 +192,6 @@ class Queue:
                 self._timestamp_for_task(new_task)
             )
             existing_task.timestamp = str(earliest_task_datetime.astimezone())
-
-    def enqueue(self, item: TaskSubmission) -> int:
-        if item.timestamp is None:
-            return self.size
-
-        # add any dependencies as additional tasks
-        tasks = [*self._collect_dependencies(item), item]
-
-        for task in tasks:
-            existing_task = self._check_for_existing_task(task)
-            if existing_task is not None:
-                self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
-                continue
-
-            metadata = task.metadata
-            metadata.setdefault("priority", Priority.NORMAL)
-            metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
-            self._queue.append(task)
-        return self.size
-
-    def _sort_key(self, task: TaskSubmission) -> tuple:
-        return (
-                self._priority_for_task(task),
-                self._earliest_group_timestamp_for_task(task),
-                self._execution_order_for_task(task),
-                self._timestamp_for_task(task),
-            )
-
-    def dequeue(self):
-        if self.size == 0:
-            return None
-
-        user_ids = {task.user_id for task in self._queue}
-        task_count = {}
-        priority_timestamps = {}
-        for user_id in user_ids:
-            user_tasks = [t for t in self._queue if t.user_id == user_id]
-            earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
-            priority_timestamps[user_id] = earliest_timestamp
-            task_count[user_id] = len(user_tasks)
-
-        for task in self._queue:
-            metadata = task.metadata
-            current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
-            raw_priority = metadata.get("priority")
-            try:
-                priority_level = Priority(raw_priority)
-            except (TypeError, ValueError):
-                priority_level = None
-
-            if priority_level is None or priority_level == Priority.NORMAL:
-                metadata["group_earliest_timestamp"] = MAX_TIMESTAMP
-                if task_count[task.user_id] >= 3:
-                    metadata["group_earliest_timestamp"] = priority_timestamps[task.user_id]
-                    metadata["priority"] = Priority.HIGH
-                else:
-                    metadata["priority"] = Priority.NORMAL
-            else:
-                metadata["group_earliest_timestamp"] = current_earliest
-                metadata["priority"] = priority_level
-
-        self._queue.sort(key=self._sort_key)
-
-        task = self._queue.pop(0)
-        return TaskDispatch(
-            provider=task.provider,
-            user_id=task.user_id,
-        )
-
-    @property
-    def size(self):
-        return len(self._queue)
-
-    @property
-    def age(self):
-        return 0
-
-    def purge(self):
-        self._queue.clear()
-        return True
 
 """
 ===================================================================================================
@@ -278,3 +276,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+

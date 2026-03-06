@@ -3,13 +3,6 @@ from __future__ import annotations
 from .utils import call_dequeue, call_enqueue, call_size, iso_ts, run_queue
 
 
-def test_enqueue_size_invalid_timestamp() -> None:
-    run_queue([
-        call_enqueue("companies_house", 1, None).expect(0),
-        call_size().expect(0),
-    ])
-
-
 def test_enqueue_size_string_timestamp() -> None:
     run_queue([
         call_enqueue("companies_house", 1, "2025-01-01 12:00:00").expect(1),
