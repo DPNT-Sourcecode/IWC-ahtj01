@@ -105,7 +105,7 @@ class Queue:
 
         existing_task = self.check_for_existing_task(item)
         if existing_task is not None:
-            earliest_task_datetime = min(
+            earliest_task_datetime: datetime = min(
                 self._timestamp_for_task(existing_task),
                 self._timestamp_for_task(item)
             )
@@ -264,5 +264,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
