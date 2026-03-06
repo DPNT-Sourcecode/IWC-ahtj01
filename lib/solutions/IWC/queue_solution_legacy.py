@@ -94,11 +94,8 @@ class Queue:
         if len(self._queue) == 0:
             return None
 
-        for task in self._queue:
-            if task.user_id == item.user_id and task.provider == item.provider:
-                return task
-
-        return None
+        provider = next((t for t in self._queue if t.name == item.provider and t.user_id == item.user_id), None)
+        return provider
 
     def enqueue(self, item: TaskSubmission) -> int:
 
@@ -107,6 +104,8 @@ class Queue:
         # - "Timestamp Ordering": If two tasks have equal priority, the one with a older timestamp must be processed first.
 
         existing_task = self.check_for_existing_task(item)
+        if existing_task is not None:
+            earliest_task_timestamp = 
 
         # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
@@ -260,4 +259,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
