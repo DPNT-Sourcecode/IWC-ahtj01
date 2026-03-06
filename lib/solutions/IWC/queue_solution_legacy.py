@@ -109,7 +109,7 @@ class Queue:
                 self._timestamp_for_task(existing_task),
                 self._timestamp_for_task(item)
             )
-            existing_task.timestamp = earliest_task_datetime
+            existing_task.timestamp = str(earliest_task_datetime.astimezone())
             return self.size
 
         # add any dependencies as additional tasks
@@ -264,6 +264,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
