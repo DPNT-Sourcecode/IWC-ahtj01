@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import IntEnum
 
 # LEGACY CODE ASSET
@@ -118,6 +118,7 @@ class Queue:
     def size(self):
         return len(self._queue)
 
+    """The time in seconds between the oldest and newest tasks in the queue"""
     @property
     def age(self):
         if self.size == 0:
@@ -127,7 +128,8 @@ class Queue:
         first_task = sorted_tasks_by_timestamp[0]
         last_task = sorted_tasks_by_timestamp[-1]
 
-        
+        time_difference: timedelta = first_task.timestamp - last_task.timestamp
+        return time_difference.total_seconds()
 
     def purge(self):
         self._queue.clear()
@@ -283,5 +285,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
