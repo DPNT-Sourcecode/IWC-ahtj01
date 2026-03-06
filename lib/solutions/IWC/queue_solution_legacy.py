@@ -113,6 +113,8 @@ class Queue:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
 
+        if self._timestamp_for_task(earliest_bank_statements_task.timestamp)
+
         self._queue = sorted(self._queue, key=self._sort_key)
 
         task = self._queue.pop(0)
@@ -193,27 +195,23 @@ class Queue:
             return datetime.fromisoformat(timestamp).replace(tzinfo=None)
         return timestamp
 
-    def _execution_order_for_task(self, task):
-        provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
-
-        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS:
-            return provider.execution_order or DEFAULT_EXECUTION_ORDER
-
-        if task.provider != "bank_statements":
-            return provider.execution_order or DEFAULT_EXECUTION_ORDER
-
-        # we are bank statements, and the queue age is > max deferral
-        # are we the affected task? if so, use default execution order
-
+    def _is_task_past_max_deferral(self, task: TaskSubmission) -> bool:
         sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
         last_task = sorted_tasks_by_timestamp[-1]
         task_age = self._get_time_in_seconds_between_tasks(task, last_task)
 
-        if task_age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS:
+        return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
+
+    def _execution_order_for_task(self, task):
+        provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
+
+        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != "bank_statements":
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-        return DEFAULT_EXECUTION_ORDER
+        if self._is_task_past_max_deferral(task):
+            return DEFAULT_EXECUTION_ORDER
 
+        return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
     def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
@@ -312,6 +310,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
