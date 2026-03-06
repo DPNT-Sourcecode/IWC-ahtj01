@@ -100,15 +100,16 @@ class Queue:
         return existing_task
 
     def enqueue(self, item: TaskSubmission) -> int:
+        if item.timestamp is None:
+            return self.size
+
         existing_task = self.check_for_existing_task(item)
         if existing_task is not None:
-            earliest_task_datetime = sorted(
-                [
-                    self._timestamp_for_task(existing_task),
-                    self._timestamp_for_task(item)
-                ]
+            earliest_task_datetime = min(
+                self._timestamp_for_task(existing_task),
+                self._timestamp_for_task(item)
             )
-            existing_task.timestamp = earliest_task_datetime[0]
+            existing_task.timestamp = earliest_task_datetime
             return self.size
 
         # add any dependencies as additional tasks
@@ -263,4 +264,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
