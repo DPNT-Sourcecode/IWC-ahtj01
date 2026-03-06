@@ -98,11 +98,12 @@ class Queue:
             current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
             raw_priority = metadata.get("priority")
 
-            if (task.provider == BANK_STATEMENTS_PROVIDER.name
-                    and (earliest_bank_statements_task is None
-                        or (self._timestamp_for_task(task) < self._timestamp_for_task(earliest_bank_statements_task)
-                            or task.metadata['fifo_order'] < earliest_bank_statements_task.metadata['fifo_order']))):
-                earliest_bank_statements_task = task
+            if (task.provider == BANK_STATEMENTS_PROVIDER.name):
+                task_due: bool = self._is_task_past_max_deferral(task)
+
+                if (earliest_bank_statements_task is None
+                    or task_due and (self._task_should_be_prioritised(task, earliest_bank_statements_task))):
+                    earliest_bank_statements_task = task
 
             try:
                 priority_level = Priority(raw_priority)
@@ -124,7 +125,7 @@ class Queue:
         self._queue = sorted(self._queue, key=self._sort_key)
 
         next_task = self._queue[0]
-        if earliest_bank_statements_task and self._is_task_past_max_deferral(earliest_bank_statements_task):
+        if (next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp):
             # remove the task
             self._queue = [t for t in self._queue if t.provider != earliest_bank_statements_task.provider and t.user_id != earliest_bank_statements_task.user_id]
             return TaskDispatch(
@@ -326,6 +327,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
