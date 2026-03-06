@@ -99,9 +99,3 @@ def test_2_users_with_3_tasks_orders_by_earliest_timestamp() -> None:
         call_dequeue().expect("id_verification", 1),
         call_dequeue().expect("bank_statements", 1),
     ])
-
-
-
-
-
-
