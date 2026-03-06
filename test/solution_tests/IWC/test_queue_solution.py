@@ -89,13 +89,13 @@ def test_duplicate_task_removed() -> None:
 
 def test_duplicate_task_with_10m_delta_removed() -> None:
     run_queue([
-        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=5)).expect(1),
-        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=10)).expect(1),
-        call_enqueue("bank_statements", 2, iso_ts(delta_minutes=0)).expect(2),
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=5)).expect(1),
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=10)).expect(1),
+        call_enqueue("companies_house", 2, iso_ts(delta_minutes=0)).expect(2),
         call_enqueue("id_verification", 2, iso_ts(delta_minutes=5)).expect(3),
         call_size().expect(3),
-        call_dequeue().expect("bank_statements", 2),
-        call_dequeue().expect("bank_statements", 1),
+        call_dequeue().expect("companies_house", 2),
+        call_dequeue().expect("companies_house", 1),
         call_dequeue().expect("id_verification", 2),
     ])
 
