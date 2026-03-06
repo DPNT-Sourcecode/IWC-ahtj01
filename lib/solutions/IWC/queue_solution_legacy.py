@@ -91,7 +91,7 @@ class Queue:
         return timestamp
 
     def enqueue(self, item: TaskSubmission) -> int:
-        
+        # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
 
         for task in tasks:
@@ -243,4 +243,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
