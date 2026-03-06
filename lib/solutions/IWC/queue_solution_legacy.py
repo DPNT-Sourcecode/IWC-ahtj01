@@ -120,13 +120,20 @@ class Queue:
 
     @property
     def age(self):
-        return 0
+        if self.size == 0:
+            return 0
+
+        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
+        first_task = sorted_tasks_by_timestamp[0]
+        last_task = sorted_tasks_by_timestamp[-1]
+
+        
 
     def purge(self):
         self._queue.clear()
         return True
 
-    
+
 
     def _sort_key(self, task: TaskSubmission) -> tuple:
         return (
@@ -276,4 +283,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
