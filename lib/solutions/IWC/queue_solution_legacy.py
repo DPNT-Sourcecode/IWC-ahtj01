@@ -108,7 +108,7 @@ class Queue:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
 
-        self._queue.sort(key=self._sort_key)
+        self._queue = sorted(self._queue, key=self._sort_key)
 
         task = self._queue.pop(0)
         return TaskDispatch(
@@ -307,3 +307,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
