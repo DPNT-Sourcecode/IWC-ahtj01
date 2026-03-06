@@ -82,7 +82,7 @@ class Queue:
         return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
 
     @staticmethod
-    def _timestamp_for_task(task):
+    def _timestamp_for_task(task) -> datetime | None:
         timestamp = task.timestamp
         if isinstance(timestamp, datetime):
             return timestamp.replace(tzinfo=None)
@@ -105,7 +105,10 @@ class Queue:
 
         existing_task = self.check_for_existing_task(item)
         if existing_task is not None:
-            earliest_task_timestamp = 
+            earliest_task = sorted(
+                [self._timestamp_for_task(existing_task.timestamp), self._timestamp_for_task(item.timestamp)]
+            )
+
 
         # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
@@ -259,5 +262,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
