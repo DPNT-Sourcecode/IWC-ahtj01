@@ -82,6 +82,7 @@ class Queue:
         user_ids = {task.user_id for task in self._queue}
         task_count = {}
         priority_timestamps = {}
+        earliest_bank_statements_task: TaskSubmission | None = None
         for user_id in user_ids:
             user_tasks = [t for t in self._queue if t.user_id == user_id]
             earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
@@ -307,4 +308,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
