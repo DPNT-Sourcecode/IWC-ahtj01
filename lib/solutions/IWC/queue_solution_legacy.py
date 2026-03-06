@@ -131,15 +131,15 @@ class Queue:
         sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
         first_task = sorted_tasks_by_timestamp[0]
         last_task = sorted_tasks_by_timestamp[-1]
-
-        time_difference: timedelta = self._timestamp_for_task(first_task) - self._timestamp_for_task(last_task)
-        return math.floor(abs(time_difference.total_seconds()))
+        return self._get_time_in_seconds_between_tasks(first_task, last_task)
 
     def purge(self):
         self._queue.clear()
         return True
 
-
+    def _get_time_in_seconds_between_tasks(self, first_task: TaskSubmission, last_task: TaskSubmission) -> int:
+        time_difference: timedelta = self._timestamp_for_task(first_task) - self._timestamp_for_task(last_task)
+        return math.floor(abs(time_difference.total_seconds()))
 
     def _sort_key(self, task: TaskSubmission) -> tuple:
         return (
@@ -197,7 +197,9 @@ class Queue:
         if task.provider != "bank_statements":
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-        
+        # we are bank statements, and the queue age is > max deferral
+        # are we the affected task? if so, use default execution order
+
 
     def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
@@ -296,4 +298,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
