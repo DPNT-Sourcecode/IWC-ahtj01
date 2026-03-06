@@ -113,7 +113,9 @@ class Queue:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
 
-        if self._timestamp_for_task(earliest_bank_statements_task.timestamp)
+        if self._is_task_past_max_deferral(earliest_bank_statements_task):
+            self._queue = [self._queue.
+
 
         self._queue = sorted(self._queue, key=self._sort_key)
 
@@ -310,6 +312,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
