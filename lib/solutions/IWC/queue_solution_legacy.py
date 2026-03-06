@@ -100,11 +100,6 @@ class Queue:
         return existing_task
 
     def enqueue(self, item: TaskSubmission) -> int:
-
-        # get existing task for user and provider
-        # if it exists, compare the date times, take the earliest
-        # - "Timestamp Ordering": If two tasks have equal priority, the one with a older timestamp must be processed first.
-
         existing_task = self.check_for_existing_task(item)
         if existing_task is not None:
             earliest_task_datetime = sorted(
@@ -268,3 +263,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
