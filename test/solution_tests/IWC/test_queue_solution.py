@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .utils import call_dequeue, call_enqueue, call_size, iso_ts, run_queue
+from .utils import call_dequeue, call_enqueue, call_size, iso_ts, run_queue, call_age
 
 
 def test_enqueue_size_string_timestamp() -> None:
@@ -202,3 +202,12 @@ def test_IWC_R3_S5() -> None:
         call_dequeue().expect("bank_statements", 1),
         call_dequeue().expect("companies_house", 2),
     ])
+
+def test_age_with_5_minute_difference() -> None:
+    run_queue([
+        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(1),
+        call_enqueue("id_verification", 1, iso_ts(delta_minutes=5)).expect(2),
+        call_size().expect(2),
+        call_age().expect(300),
+    ])
+
