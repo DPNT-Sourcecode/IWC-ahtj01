@@ -93,6 +93,10 @@ class Queue:
             metadata = task.metadata
             current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
             raw_priority = metadata.get("priority")
+
+            if earliest_bank_statements_task is None or self._timestamp_for_task(task) < self._timestamp_for_task(earliest_bank_statements_task.timestamp):
+                earliest_bank_statements_task = task
+
             try:
                 priority_level = Priority(raw_priority)
             except (TypeError, ValueError):
@@ -308,5 +312,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
