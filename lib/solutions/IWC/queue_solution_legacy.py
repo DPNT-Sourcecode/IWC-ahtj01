@@ -19,9 +19,11 @@ class Provider:
     execution_order: int
 
 MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
+DEFAULT_EXECUTION_ORDER = 1
+BANK_STATEMENTS_EXECUTION_ORDER = 2
 
 COMPANIES_HOUSE_PROVIDER = Provider(
-    name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[], execution_order=1
+    name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
 )
 
 
@@ -29,16 +31,16 @@ CREDIT_CHECK_PROVIDER = Provider(
     name="credit_check",
     base_url="https://fake.creditcheck.co.uk",
     depends_on=["companies_house"],
-    execution_order=1
+    execution_order=DEFAULT_EXECUTION_ORDER
 )
 
 
 BANK_STATEMENTS_PROVIDER = Provider(
-    name="bank_statements", base_url="https://fake.bankstatements.co.uk", depends_on=[], execution_order=2
+    name="bank_statements", base_url="https://fake.bankstatements.co.uk", depends_on=[], execution_order=BANK_STATEMENTS_EXECUTION_ORDER
 )
 
 ID_VERIFICATION_PROVIDER = Provider(
-    name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[], execution_order=1
+    name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
 )
 
 
@@ -93,6 +95,10 @@ class Queue:
         if isinstance(timestamp, str):
             return datetime.fromisoformat(timestamp).replace(tzinfo=None)
         return timestamp
+
+    def _execution_order_for_task(self, task):
+        provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
+        return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
     def check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
@@ -168,6 +174,7 @@ class Queue:
                 self._priority_for_task(i),
                 self._earliest_group_timestamp_for_task(i),
                 self._timestamp_for_task(i),
+                self._execution_order_for_task(i)
             )
         )
 
@@ -272,6 +279,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
