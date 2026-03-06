@@ -54,7 +54,7 @@ def test_tasks_order_by_timestamp() -> None:
         call_dequeue().expect("bank_statements", 1),
     ])
 
-def test_tasks_with_duplicate_order_by_timestamp() -> None:
+def test_duplicate_task_removed() -> None:
     run_queue([
         call_enqueue("bank_statements", 1, iso_ts(delta_minutes=5)).expect(1),
         call_enqueue("bank_statements", 1, iso_ts(delta_minutes=5)).expect(1),
@@ -64,14 +64,16 @@ def test_tasks_with_duplicate_order_by_timestamp() -> None:
         call_dequeue().expect("bank_statements", 1),
     ])
 
-def test_tasks_with_duplicate_provider_different_timestamp_order_by_timestamp() -> None:
+def test_duplicate_task_with_10m_delta_removed() -> None:
     run_queue([
-        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(1),
         call_enqueue("bank_statements", 1, iso_ts(delta_minutes=5)).expect(1),
+        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=10)).expect(1),
         call_enqueue("bank_statements", 2, iso_ts(delta_minutes=0)).expect(2),
-        call_size().expect(2),
-        call_dequeue().expect("bank_statements", 1),
+        call_enqueue("id_verification", 2, iso_ts(delta_minutes=5)).expect(3),
+        call_size().expect(3),
         call_dequeue().expect("bank_statements", 2),
+        call_dequeue().expect("bank_statements", 1),
+        call_dequeue().expect("id_verification", 2),
     ])
 
 def test_tasks_order_by_earliest_timestamp() -> None:
@@ -118,6 +120,3 @@ def test_2_high_priority_groups_order_by_earliest_timestamp() -> None:
         call_dequeue().expect("id_verification", 1),
         call_dequeue().expect("bank_statements", 1),
     ])
-
-
-
