@@ -73,8 +73,8 @@ class Queue:
             metadata.setdefault("priority", Priority.NORMAL)
             metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
             metadata.setdefault('fifo_order', 1
-                if task.provider != BANK_STATEMENTS_PROVIDER
-                else sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER and t.timestamp == task.timestamp))
+                if task.provider != BANK_STATEMENTS_PROVIDER.name
+                else sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp))
 
             self._queue.append(task)
         return self.size
@@ -98,7 +98,7 @@ class Queue:
             current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
             raw_priority = metadata.get("priority")
 
-            if (task.provider == BANK_STATEMENTS_PROVIDER
+            if (task.provider == BANK_STATEMENTS_PROVIDER.name
                     and (earliest_bank_statements_task is None
                         or (self._timestamp_for_task(task) < self._timestamp_for_task(earliest_bank_statements_task)
                             or task.metadata['fifo_order'] < earliest_bank_statements_task.metadata['fifo_order']))):
@@ -221,7 +221,7 @@ class Queue:
     def _execution_order_for_task(self, task):
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
 
-        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER:
+        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
         if self._is_task_past_max_deferral(task):
@@ -326,6 +326,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
