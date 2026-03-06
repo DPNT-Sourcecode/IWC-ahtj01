@@ -23,6 +23,7 @@ class Provider:
 MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
 DEFAULT_EXECUTION_ORDER = 1
 BANK_STATEMENTS_EXECUTION_ORDER = 2
+BANK_STATEMENTS_MAX_DEFERRAL_SECONDS = 300
 
 COMPANIES_HOUSE_PROVIDER = Provider(
     name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
@@ -189,7 +190,14 @@ class Queue:
 
     def _execution_order_for_task(self, task):
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
-        return provider.execution_order or DEFAULT_EXECUTION_ORDER
+
+        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS:
+            return provider.execution_order or DEFAULT_EXECUTION_ORDER
+
+        if task.provider != "bank_statements":
+            return provider.execution_order or DEFAULT_EXECUTION_ORDER
+
+        
 
     def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
@@ -288,3 +296,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
