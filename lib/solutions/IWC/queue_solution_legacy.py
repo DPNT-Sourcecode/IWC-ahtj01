@@ -72,9 +72,9 @@ class Queue:
             metadata = task.metadata
             metadata.setdefault("priority", Priority.NORMAL)
             metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
-
-            if task.provider == BANK_STATEMENTS_PROVIDER:
-                metadata['fifo_order'] = sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER and t.timestamp == task.timestamp)
+            metadata.setdefault('fifo_order', 1
+                if task.provider != BANK_STATEMENTS_PROVIDER
+                else sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER and t.timestamp == task.timestamp))
 
             self._queue.append(task)
         return self.size
@@ -325,3 +325,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
