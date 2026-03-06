@@ -101,14 +101,14 @@ class Queue:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
         return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-    def check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
+    def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
         if len(self._queue) == 0:
             return None
 
         existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
-    def update_timestamp_for_existing_task(self, existing_task: TaskSubmission, new_task: TaskSubmission) -> None:
+    def _update_timestamp_for_existing_task(self, existing_task: TaskSubmission, new_task: TaskSubmission) -> None:
             earliest_task_datetime: datetime = min(
                 self._timestamp_for_task(existing_task),
                 self._timestamp_for_task(new_task)
@@ -123,9 +123,9 @@ class Queue:
         tasks = [*self._collect_dependencies(item), item]
 
         for task in tasks:
-            existing_task = self.check_for_existing_task(task)
+            existing_task = self._check_for_existing_task(task)
             if existing_task is not None:
-                self.update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+                self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
                 continue
 
             metadata = task.metadata
@@ -133,6 +133,14 @@ class Queue:
             metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
             self._queue.append(task)
         return self.size
+
+    def _sort_key(self, task: TaskSubmission) -> tuple:
+        return (
+                self._priority_for_task(task),
+                self._earliest_group_timestamp_for_task(task),
+                self._execution_order_for_task(task),
+                self._timestamp_for_task(task),
+            )
 
     def dequeue(self):
         if self.size == 0:
@@ -167,14 +175,7 @@ class Queue:
                 metadata["group_earliest_timestamp"] = current_earliest
                 metadata["priority"] = priority_level
 
-        self._queue.sort(
-            key=lambda i: (
-                self._priority_for_task(i),
-                self._earliest_group_timestamp_for_task(i),
-                self._execution_order_for_task(i),
-                self._timestamp_for_task(i),
-            )
-        )
+        self._queue.sort(key=self._sort_key)
 
         task = self._queue.pop(0)
         return TaskDispatch(
@@ -277,4 +278,3 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
-
