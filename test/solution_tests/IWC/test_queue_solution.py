@@ -211,3 +211,32 @@ def test_age_with_5_minute_difference() -> None:
         call_age().expect(300),
     ])
 
+
+def test_age_with_3_and_5_minute_difference() -> None:
+    run_queue([
+        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(1),
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=3)).expect(2),
+        call_enqueue("id_verification", 1, iso_ts(delta_minutes=5)).expect(3),
+        call_size().expect(3),
+        call_age().expect(300),
+    ])
+
+
+def test_age_with_3_and_5_minute_difference_reversed() -> None:
+    run_queue([
+        call_enqueue("id_verification", 1, iso_ts(delta_minutes=5)).expect(1),
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=3)).expect(2),
+        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(3),
+        call_size().expect(3),
+        call_age().expect(300),
+    ])
+
+
+def test_age_with_0_minute_difference() -> None:
+    run_queue([
+        call_enqueue("companies_house", 1, iso_ts(delta_minutes=0)).expect(1),
+        call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(2),
+        call_size().expect(2),
+        call_age().expect(0),
+    ])
+
