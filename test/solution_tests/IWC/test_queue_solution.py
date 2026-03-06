@@ -239,4 +239,3 @@ def test_age_with_0_minute_difference() -> None:
         call_size().expect(2),
         call_age().expect(0),
     ])
-
