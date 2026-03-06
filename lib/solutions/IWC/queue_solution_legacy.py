@@ -16,6 +16,7 @@ class Provider:
     name: str
     base_url: str
     depends_on: list[str]
+    """Modifier to the order in which tasks will be executed."""
     execution_order: int
 
 MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
@@ -173,8 +174,8 @@ class Queue:
             key=lambda i: (
                 self._priority_for_task(i),
                 self._earliest_group_timestamp_for_task(i),
+                self._execution_order_for_task(i),
                 self._timestamp_for_task(i),
-                self._execution_order_for_task(i)
             )
         )
 
@@ -279,3 +280,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
