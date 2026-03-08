@@ -80,16 +80,7 @@ class Queue:
 
         earliest_bank_statements_task: TaskSubmission | None = None
         for task in self._queue:
-            # if this is a bank statement task
-            # check if it's past its max deferral
-            # if it is, it's a candidate for running next, which will be sorted out when we order
-            # first, we need to check if there are any clashing timestamps
-            # we want to give preference to that task over any others
-            # but! normal sorting should still happen first
-            if task.provider == BANK_STATEMENTS_PROVIDER.name and self._is_task_past_max_deferral(task):
-                if earliest_bank_statements_task is None or self._task_should_be_prioritised(task, earliest_bank_statements_task):
-                    earliest_bank_statements_task = task
-
+            earliest_bank_statements_task = self._determine_earliest_bank_statement_task(task, earliest_bank_statements_task)
             self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
 
         self._queue = sorted(self._queue, key=self._sort_key)
@@ -123,6 +114,18 @@ class Queue:
             priority_timestamps[user_id] = earliest_timestamp
             task_count[user_id] = len(user_tasks)
         return task_count, priority_timestamps
+
+    def _determine_earliest_bank_statement_task(self, task: TaskSubmission, earliest_bank_statements_task: TaskSubmission) -> TaskSubmission:
+        # if this is a bank statement task
+        # check if it's past its max deferral
+        # if it is, it's a candidate for running next, which will be sorted out when we order
+        # first, we need to check if there are any clashing timestamps
+        # we want to give preference to that task over any others
+        # but! normal sorting should still happen first
+        if task.provider == BANK_STATEMENTS_PROVIDER.name and self._is_task_past_max_deferral(task):
+            if earliest_bank_statements_task is None or self._task_should_be_prioritised(task, earliest_bank_statements_task):
+                earliest_bank_statements_task = task
+        return earliest_bank_statements_task
 
     def _determine_task_priority_and_update_timestamp(self, task: TaskSubmission, task_count: dict[int, int], priority_timestamps: dict[int, datetime]):
         metadata = task.metadata
@@ -360,5 +363,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
