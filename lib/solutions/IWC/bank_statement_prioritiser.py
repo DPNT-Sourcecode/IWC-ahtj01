@@ -19,8 +19,8 @@ class BankStatementPrioritiser:
         return earliest_bank_statements_task
 
 
-    def should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask):
-        return earliest_bank_statements_task and next_task.timestamp > earliest_bank_statements_task.timestamp
+    def should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask | None):
+        return earliest_bank_statements_task and next_task.timestamp >= earliest_bank_statements_task.timestamp
 
 
     def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:
@@ -28,4 +28,4 @@ class BankStatementPrioritiser:
             return False
         if task.timestamp < earliest_task.timestamp:
             return True
-        return task.metadata["fifo_order"] < earliest_task.metadata["fifo_order"]
+        return task.metadata["fifo_order"] < earliest_task.metadata["fifo_order"]

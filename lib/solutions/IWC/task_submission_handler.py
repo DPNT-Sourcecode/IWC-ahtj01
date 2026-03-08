@@ -88,4 +88,3 @@ class TaskSubmissionHandler:
             fifo_order = 1 + sum(
                 1 for t in queued_tasks if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
         metadata.setdefault('fifo_order', fifo_order)
-
