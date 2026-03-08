@@ -262,7 +262,7 @@ def test_limit_deferring_bank_statements_to_5_minutes_with_clashes() -> None:
         call_size().expect(5),
         call_dequeue().expect("id_verification", 1),
         call_dequeue().expect("bank_statements", 2),
-        call_dequeue().expect("companies_house", 1),
+        call_dequeue().expect("bank_statements", 1),
         call_dequeue().expect("companies_house", 1),
         call_dequeue().expect("companies_house", 3),
     ])

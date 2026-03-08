@@ -135,14 +135,18 @@ class Queue:
 
         self._queue = sorted(self._queue, key=self._sort_key)
 
-        # next_task = self._queue[0]
-        # if (next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp):
-        #     # remove the task
-        #     self._queue = [t for t in self._queue if t.provider != earliest_bank_statements_task.provider and t.user_id != earliest_bank_statements_task.user_id]
-        #     return TaskDispatch(
-        #         provider=earliest_bank_statements_task.provider,
-        #         user_id=earliest_bank_statements_task.user_id,
-        #     )
+        # we've done the normal sorting
+        # now we need to check if the next task due is a bank statement
+        # if it is, we may be prioritising a grouped statement over a standalone that's also due
+        # in which case we'll override
+        next_task = self._queue[0]
+        if (next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp):
+            # remove the task
+            self._queue = [t for t in self._queue if t.provider != earliest_bank_statements_task.provider and t.user_id != earliest_bank_statements_task.user_id]
+            return TaskDispatch(
+                provider=earliest_bank_statements_task.provider,
+                user_id=earliest_bank_statements_task.user_id,
+            )
 
         task = self._queue.pop(0)
 
@@ -151,7 +155,7 @@ class Queue:
             user_id=task.user_id,
         )
 
-    def task_should_be_prioritised(self, task: TaskSubmission, earliest_task: TaskSubmission) -> bool:
+    def _task_should_be_prioritised(self, task: TaskSubmission, earliest_task: TaskSubmission) -> bool:
         if self._timestamp_for_task(task) > self._timestamp_for_task(earliest_task):
             return False
         if self._timestamp_for_task(task) < self._timestamp_for_task(earliest_task):
