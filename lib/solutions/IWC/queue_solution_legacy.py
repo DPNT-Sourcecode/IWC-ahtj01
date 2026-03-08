@@ -171,7 +171,7 @@ class Queue:
     def _should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask):
         return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
 
-    def _duplicate_task_exists(self, task: QueuedTask) -> bool:
+    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
         existing_task = self._check_for_existing_task(task)
         if existing_task is not None:
             self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
@@ -291,10 +291,10 @@ class Queue:
         existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
-    def _update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: QueuedTask) -> None:
+    def _update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: TaskSubmission) -> None:
             earliest_task_datetime: datetime = min(
                 existing_task.timestamp,
-                new_task.timestamp
+                self._timestamp_for_task(new_task)
             )
             existing_task.timestamp = earliest_task_datetime.astimezone()
 
@@ -381,6 +381,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
