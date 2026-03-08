@@ -168,8 +168,6 @@ class Queue:
         time_difference: timedelta = first_task.timestamp - last_task.timestamp
         return math.floor(abs(time_difference.total_seconds()))
 
-
-
     def _collect_dependencies(self, task: TaskSubmission) -> list[TaskSubmission]:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
         if provider is None:

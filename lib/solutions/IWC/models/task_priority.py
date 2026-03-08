@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 
 class Priority(IntEnum):
     """Represents the queue ordering tiers observed in the legacy system."""

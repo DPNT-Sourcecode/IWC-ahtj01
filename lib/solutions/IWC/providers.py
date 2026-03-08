@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from solutions.IWC.constants import DEFAULT_EXECUTION_ORDER, BANK_STATEMENTS_EXECUTION_ORDER
 
 

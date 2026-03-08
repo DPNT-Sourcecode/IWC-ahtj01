@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from solutions.IWC.constants import MAX_TIMESTAMP
+from solutions.IWC.constants import MAX_TIMESTAMP, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS, DEFAULT_EXECUTION_ORDER
 from solutions.IWC.models.queued_task import QueuedTask
+from solutions.IWC.providers import REGISTERED_PROVIDERS, BANK_STATEMENTS_PROVIDER
 from solutions.IWC.queue_solution_legacy import Priority
 
 
@@ -28,11 +29,15 @@ class QueueSorter:
         metadata = task.metadata
         return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
 
-    @staticmethod
-    def _timestamp_for_task(task: QueuedTask) -> datetime | None:
-        timestamp = task.timestamp
-        if isinstance(timestamp, datetime):
-            return timestamp.replace(tzinfo=None)
-        if isinstance(timestamp, str):
-            return datetime.fromisoformat(timestamp).replace(tzinfo=None)
-        return timestamp
+
+
+    def _execution_order_for_task(self, task: QueuedTask, last_task: QueuedTask) -> int:
+        provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
+
+        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
+            return provider.execution_order or DEFAULT_EXECUTION_ORDER
+
+        if self._is_task_past_max_deferral(task, last_task):
+            return DEFAULT_EXECUTION_ORDER
+
+        return provider.execution_order or DEFAULT_EXECUTION_ORDER
