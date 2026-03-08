@@ -73,7 +73,7 @@ class Queue:
             if task.provider == BANK_STATEMENTS_PROVIDER.name:
                 total_bank_statement_tasks_with_same_timestamp = sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp)
                 if total_bank_statement_tasks_with_same_timestamp > 0:
-                    fifo_order = total_bank_statement_tasks_with_same_timestamp
+                    fifo_order = total_bank_statement_tasks_with_same_timestamp + 1
 
             metadata = task.metadata
             metadata.setdefault("priority", Priority.NORMAL)
@@ -349,5 +349,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
