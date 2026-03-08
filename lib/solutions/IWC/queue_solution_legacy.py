@@ -64,22 +64,31 @@ class Queue:
         tasks = [*self._collect_dependencies(item), item]
 
         for task in tasks:
-            existing_task = self._check_for_existing_task(task)
-            if existing_task is not None:
-                self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+            if self._duplicate_task_exists(task):
                 continue
 
-            fifo_order = 1
-            if task.provider == BANK_STATEMENTS_PROVIDER.name:
-                fifo_order = 1 + sum(1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp)
-
-            metadata = task.metadata
-            metadata.setdefault("priority", Priority.NORMAL)
-            metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
-            metadata.setdefault('fifo_order', fifo_order)
+            self._set_task_metadata(task)
 
             self._queue.append(task)
         return self.size
+
+    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
+        existing_task = self._check_for_existing_task(task)
+        if existing_task is not None:
+            self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+            return True
+        return False
+
+    def _set_task_metadata(self, task: TaskSubmission):
+        metadata = task.metadata
+        metadata.setdefault("priority", Priority.NORMAL)
+        metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
+
+        fifo_order = 1
+        if task.provider == BANK_STATEMENTS_PROVIDER.name:
+            fifo_order = 1 + sum(
+                1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp)
+        metadata.setdefault('fifo_order', fifo_order)
 
     def dequeue(self):
         if self.size == 0:
@@ -343,6 +352,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
