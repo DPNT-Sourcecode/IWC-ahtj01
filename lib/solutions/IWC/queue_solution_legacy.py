@@ -2,11 +2,11 @@ import math
 from datetime import datetime, timedelta
 
 from solutions.IWC.bank_statement_prioritiser import BankStatementPrioritiser
-from solutions.IWC.constants import MAX_TIMESTAMP, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
+from solutions.IWC.constants import MAX_TIMESTAMP
 from solutions.IWC.models.queued_task import QueuedTask
 from solutions.IWC.models.task_priority import Priority
-from solutions.IWC.providers import BANK_STATEMENTS_PROVIDER, REGISTERED_PROVIDERS
 from solutions.IWC.queue_sorter import QueueSorter
+from solutions.IWC.task_submission_handler import TaskSubmissionHandler
 # LEGACY CODE ASSET
 # RESOLVED on deploy
 from solutions.IWC.task_types import TaskSubmission, TaskDispatch
@@ -16,28 +16,21 @@ class Queue:
     _queue: list[QueuedTask]
     _queue_sorter: QueueSorter
     _bank_statement_prioritiser: BankStatementPrioritiser
+    _task_submission_handler: TaskSubmissionHandler
 
     def __init__(self):
         self._queue = []
+        self._task_submission_handler = TaskSubmissionHandler()
         self._queue_sorter = QueueSorter()
         self._bank_statement_prioritiser = BankStatementPrioritiser()
 
     def enqueue(self, item: TaskSubmission) -> int:
-        # add any dependencies as additional tasks
-        tasks = [*self._collect_dependencies(item), item]
 
-        for task in tasks:
-            if self._duplicate_task_exists(task):
-                continue
+        new_tasks = self._task_submission_handler.create(item)
 
-            self._set_task_metadata(task)
+        for task in new_tasks:
+            self._queue.append(task)
 
-            self._queue.append(QueuedTask(
-                provider=task.provider,
-                user_id=task.user_id,
-                timestamp=self._timestamp_for_task(task),
-                metadata=task.metadata,
-            ))
         return self.size
 
     def dequeue(self):
@@ -218,7 +211,3 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
-
-
-
-

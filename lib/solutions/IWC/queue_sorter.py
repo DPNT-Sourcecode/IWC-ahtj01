@@ -7,7 +7,7 @@ from solutions.IWC.queue_solution_legacy import Priority
 
 
 class QueueSorter:
-    def _sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
+    def sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
         return (
                 self._priority_for_task(task),
                 self._earliest_group_timestamp_for_task(task),
@@ -28,7 +28,6 @@ class QueueSorter:
     def _earliest_group_timestamp_for_task(task: QueuedTask):
         metadata = task.metadata
         return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
-
 
 
     def _execution_order_for_task(self, task: QueuedTask, last_task: QueuedTask) -> int:

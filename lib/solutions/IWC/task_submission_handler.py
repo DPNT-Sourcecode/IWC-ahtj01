@@ -9,6 +9,25 @@ from solutions.IWC.task_types import TaskSubmission
 
 class TaskSubmissionHandler:
 
+    def create(self, item: TaskSubmission) -> list[QueuedTask]:
+        # add any dependencies as additional tasks
+        tasks = [*self._collect_dependencies(item), item]
+
+        tasks_to_queue: list[QueuedTask] = []
+        for task in tasks:
+            if self._duplicate_task_exists(task):
+                continue
+
+            self._set_task_metadata(task)
+
+            tasks_to_queue.append(QueuedTask(
+                provider=task.provider,
+                user_id=task.user_id,
+                timestamp=self._timestamp_for_task(task),
+                metadata=task.metadata,
+            ))
+        return tasks_to_queue
+
 
     def _check_for_existing_task(self, item: TaskSubmission) -> QueuedTask | None:
         if len(self._queue) == 0:
