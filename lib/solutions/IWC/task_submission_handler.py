@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Sequence
 
 from solutions.IWC.constants import MAX_TIMESTAMP
 from solutions.IWC.models.queued_task import QueuedTask
@@ -9,12 +10,14 @@ from solutions.IWC.task_types import TaskSubmission
 
 class TaskSubmissionHandler:
 
-    def create(self, item: TaskSubmission) -> list[QueuedTask]:
+    def create(self, item: TaskSubmission, queued_tasks: Sequence[QueuedTask]) -> list[QueuedTask]:
         # add any dependencies as additional tasks
         tasks = [*self._collect_dependencies(item), item]
 
         tasks_to_queue: list[QueuedTask] = []
         for task in tasks:
+            if self._duplicate_task_exists(task, queued_tasks):
+
             self._set_task_metadata(task)
 
             tasks_to_queue.append(QueuedTask(
@@ -26,7 +29,7 @@ class TaskSubmissionHandler:
         return tasks_to_queue
 
 
-    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
+    def _duplicate_task_exists(self, task: TaskSubmission, queued_tasks: Sequence[QueuedTask]) -> bool:
         existing_task = self._check_for_existing_task(task)
         if existing_task is not None:
             self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
@@ -85,3 +88,4 @@ class TaskSubmissionHandler:
             fifo_order = 1 + sum(
                 1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
         metadata.setdefault('fifo_order', fifo_order)
+
