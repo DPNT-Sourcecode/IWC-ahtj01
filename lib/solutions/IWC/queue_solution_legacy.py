@@ -1,5 +1,5 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
 
@@ -59,9 +59,14 @@ class QueuedTask:
     timestamp: datetime
     metadata: dict[str, object] = field(default_factory=dict)
 
+    def __init__(self, provider: str, user_id: int, timestamp: datetime, metadata: dict[str, object] | None = None):
+        self.provider = provider
+        self.user_id = user_id
+        self.timestamp = timestamp
+        self.metadata = metadata or {}
 
 class Queue:
-    _queue: list[TaskSubmission]
+    _queue: list[QueuedTask]
 
     def __init__(self):
         self._queue = []
@@ -76,7 +81,12 @@ class Queue:
 
             self._set_task_metadata(task)
 
-            self._queue.append(task)
+            self._queue.append(QueuedTask(
+                provider=task.provider,
+                user_id=task.user_id,
+                timestamp=self._timestamp_for_task(task.timestamp),
+                metadata=task.metadata,
+            ))
         return self.size
 
     def dequeue(self):
@@ -88,7 +98,7 @@ class Queue:
         sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
         last_task = sorted_tasks_by_timestamp[-1]
 
-        earliest_bank_statements_task: TaskSubmission | None = None
+        earliest_bank_statements_task: QueuedTask | None = None
         for task in self._queue:
             earliest_bank_statements_task = self._determine_earliest_bank_statement_task(task, earliest_bank_statements_task, last_task)
             self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
@@ -371,6 +381,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
