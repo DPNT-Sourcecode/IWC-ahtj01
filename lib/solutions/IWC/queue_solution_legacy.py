@@ -84,7 +84,7 @@ class Queue:
             self._queue.append(QueuedTask(
                 provider=task.provider,
                 user_id=task.user_id,
-                timestamp=self._timestamp_for_task(task.timestamp),
+                timestamp=self._timestamp_for_task(task),
                 metadata=task.metadata,
             ))
         return self.size
@@ -135,7 +135,7 @@ class Queue:
             task_count[user_id] = len(user_tasks)
         return task_count, priority_timestamps
 
-    def _determine_earliest_bank_statement_task(self, task: TaskSubmission, earliest_bank_statements_task: TaskSubmission, last_task: TaskSubmission) -> TaskSubmission:
+    def _determine_earliest_bank_statement_task(self, task: QueuedTask, earliest_bank_statements_task: QueuedTask, last_task: QueuedTask) -> QueuedTask:
         # if this is a bank statement task
         # check if it's past its max deferral
         # if it is, it's a candidate for running next, which will be sorted out when we order
@@ -147,7 +147,7 @@ class Queue:
                 earliest_bank_statements_task = task
         return earliest_bank_statements_task
 
-    def _determine_task_priority_and_update_timestamp(self, task: TaskSubmission, task_count: dict[int, int], priority_timestamps: dict[int, datetime]):
+    def _determine_task_priority_and_update_timestamp(self, task: QueuedTask, task_count: dict[int, int], priority_timestamps: dict[int, datetime]):
         metadata = task.metadata
         current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
         raw_priority = metadata.get("priority")
@@ -168,17 +168,17 @@ class Queue:
             metadata["group_earliest_timestamp"] = current_earliest
             metadata["priority"] = priority_level
 
-    def _should_override_next_task(self, next_task: TaskSubmission, earliest_bank_statements_task: TaskSubmission):
+    def _should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask):
         return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
 
-    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
+    def _duplicate_task_exists(self, task: QueuedTask) -> bool:
         existing_task = self._check_for_existing_task(task)
         if existing_task is not None:
             self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
             return True
         return False
 
-    def _set_task_metadata(self, task: TaskSubmission):
+    def _set_task_metadata(self, task: QueuedTask):
         metadata = task.metadata
         metadata.setdefault("priority", Priority.NORMAL)
         metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -189,7 +189,7 @@ class Queue:
                 1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp)
         metadata.setdefault('fifo_order', fifo_order)
 
-    def _task_should_be_prioritised(self, task: TaskSubmission, earliest_task: TaskSubmission) -> bool:
+    def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:
         if self._timestamp_for_task(task) > self._timestamp_for_task(earliest_task):
             return False
         if self._timestamp_for_task(task) < self._timestamp_for_task(earliest_task):
@@ -217,11 +217,11 @@ class Queue:
         self._queue.clear()
         return True
 
-    def _get_time_in_seconds_between_tasks(self, first_task: TaskSubmission, last_task: TaskSubmission) -> int:
+    def _get_time_in_seconds_between_tasks(self, first_task: QueuedTask, last_task: QueuedTask) -> int:
         time_difference: timedelta = self._timestamp_for_task(first_task) - self._timestamp_for_task(last_task)
         return math.floor(abs(time_difference.total_seconds()))
 
-    def _sort_key(self, task: TaskSubmission, last_task: TaskSubmission) -> tuple:
+    def _sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
         return (
                 self._priority_for_task(task),
                 self._earliest_group_timestamp_for_task(task),
@@ -255,12 +255,12 @@ class Queue:
             return Priority.NORMAL
 
     @staticmethod
-    def _earliest_group_timestamp_for_task(task):
+    def _earliest_group_timestamp_for_task(task: QueuedTask):
         metadata = task.metadata
         return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
 
     @staticmethod
-    def _timestamp_for_task(task) -> datetime | None:
+    def _timestamp_for_task(task: QueuedTask) -> datetime | None:
         timestamp = task.timestamp
         if isinstance(timestamp, datetime):
             return timestamp.replace(tzinfo=None)
@@ -268,12 +268,12 @@ class Queue:
             return datetime.fromisoformat(timestamp).replace(tzinfo=None)
         return timestamp
 
-    def _is_task_past_max_deferral(self, task: TaskSubmission, last_task: TaskSubmission) -> bool:
+    def _is_task_past_max_deferral(self, task: QueuedTask, last_task: QueuedTask) -> bool:
         task_age = self._get_time_in_seconds_between_tasks(task, last_task)
 
         return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
 
-    def _execution_order_for_task(self, task: TaskSubmission, last_task: TaskSubmission) -> int:
+    def _execution_order_for_task(self, task: QueuedTask, last_task: QueuedTask) -> int:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
 
         if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
@@ -284,19 +284,19 @@ class Queue:
 
         return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-    def _check_for_existing_task(self, item: TaskSubmission) -> TaskSubmission | None:
+    def _check_for_existing_task(self, item: QueuedTask) -> QueuedTask | None:
         if len(self._queue) == 0:
             return None
 
         existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
-    def _update_timestamp_for_existing_task(self, existing_task: TaskSubmission, new_task: TaskSubmission) -> None:
+    def _update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: QueuedTask) -> None:
             earliest_task_datetime: datetime = min(
-                self._timestamp_for_task(existing_task),
-                self._timestamp_for_task(new_task)
+                existing_task.timestamp,
+                new_task.timestamp
             )
-            existing_task.timestamp = str(earliest_task_datetime.astimezone())
+            existing_task.timestamp = earliest_task_datetime.astimezone()
 
 """
 ===================================================================================================
@@ -381,6 +381,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
