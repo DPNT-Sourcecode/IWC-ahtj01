@@ -136,7 +136,7 @@ class Queue:
         next_task = self._queue[0]
         if (next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp):
             # remove the task
-            self._queue = [t for t in self._queue if t.provider != earliest_bank_statements_task.provider and t.user_id != earliest_bank_statements_task.user_id]
+            self._queue = [t for t in self._queue if t is not earliest_bank_statements_task]
             return TaskDispatch(
                 provider=earliest_bank_statements_task.provider,
                 user_id=earliest_bank_statements_task.user_id,
@@ -343,6 +343,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
