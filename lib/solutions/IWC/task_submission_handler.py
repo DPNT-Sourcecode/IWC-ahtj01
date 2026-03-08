@@ -15,9 +15,6 @@ class TaskSubmissionHandler:
 
         tasks_to_queue: list[QueuedTask] = []
         for task in tasks:
-            if self._duplicate_task_exists(task):
-                continue
-
             self._set_task_metadata(task)
 
             tasks_to_queue.append(QueuedTask(
@@ -29,6 +26,13 @@ class TaskSubmissionHandler:
         return tasks_to_queue
 
 
+    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
+        existing_task = self._check_for_existing_task(task)
+        if existing_task is not None:
+            self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+            return True
+        return False
+
     def _check_for_existing_task(self, item: TaskSubmission) -> QueuedTask | None:
         if len(self._queue) == 0:
             return None
@@ -36,10 +40,10 @@ class TaskSubmissionHandler:
         existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
-    def _update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: TaskSubmission) -> None:
+    def update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: QueuedTask) -> None:
             earliest_task_datetime: datetime = min(
                 existing_task.timestamp,
-                self._timestamp_for_task(new_task)
+                new_task.timestamp
             )
             existing_task.timestamp = earliest_task_datetime.astimezone().replace(tzinfo=None)
 
@@ -70,12 +74,6 @@ class TaskSubmissionHandler:
         return tasks
 
 
-    def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
-        existing_task = self._check_for_existing_task(task)
-        if existing_task is not None:
-            self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
-            return True
-        return False
 
     def _set_task_metadata(self, task: TaskSubmission):
         metadata = task.metadata

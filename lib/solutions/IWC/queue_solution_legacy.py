@@ -29,9 +29,26 @@ class Queue:
         new_tasks = self._task_submission_handler.create(item)
 
         for task in new_tasks:
+            if self._duplicate_task_exists(task):
+                continue
             self._queue.append(task)
 
         return self.size
+
+
+    def _duplicate_task_exists(self, task: QueuedTask) -> bool:
+        existing_task = self._check_for_existing_task(task)
+        if existing_task is not None:
+            self._task_submission_handler.update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
+            return True
+        return False
+    
+
+    def _check_for_existing_task(self, item: QueuedTask) -> QueuedTask | None:
+        if len(self._queue) == 0:
+            return None
+        existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
+        return existing_task
 
     def dequeue(self):
         if self.size == 0:
@@ -211,3 +228,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
