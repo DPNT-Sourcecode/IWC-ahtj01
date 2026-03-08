@@ -53,6 +53,13 @@ REGISTERED_PROVIDERS: list[Provider] = [
     ID_VERIFICATION_PROVIDER,
 ]
 
+class QueuedTask:
+    provider: str
+    user_id: int
+    timestamp: datetime
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
 class Queue:
     _queue: list[TaskSubmission]
 
@@ -78,12 +85,15 @@ class Queue:
 
         task_count, priority_timestamps = self._gather_user_tasks()
 
+        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
+        last_task = sorted_tasks_by_timestamp[-1]
+
         earliest_bank_statements_task: TaskSubmission | None = None
         for task in self._queue:
-            earliest_bank_statements_task = self._determine_earliest_bank_statement_task(task, earliest_bank_statements_task)
+            earliest_bank_statements_task = self._determine_earliest_bank_statement_task(task, earliest_bank_statements_task, last_task)
             self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
 
-        self._queue = sorted(self._queue, key=self._sort_key)
+        self._queue = sorted(self._queue, key=lambda t: self._sort_key(t, last_task))
 
         # we've done the normal sorting
         # now we need to check if the next task due is a bank statement
@@ -115,14 +125,14 @@ class Queue:
             task_count[user_id] = len(user_tasks)
         return task_count, priority_timestamps
 
-    def _determine_earliest_bank_statement_task(self, task: TaskSubmission, earliest_bank_statements_task: TaskSubmission) -> TaskSubmission:
+    def _determine_earliest_bank_statement_task(self, task: TaskSubmission, earliest_bank_statements_task: TaskSubmission, last_task: TaskSubmission) -> TaskSubmission:
         # if this is a bank statement task
         # check if it's past its max deferral
         # if it is, it's a candidate for running next, which will be sorted out when we order
         # first, we need to check if there are any clashing timestamps
         # we want to give preference to that task over any others
         # but! normal sorting should still happen first
-        if task.provider == BANK_STATEMENTS_PROVIDER.name and self._is_task_past_max_deferral(task):
+        if task.provider == BANK_STATEMENTS_PROVIDER.name and self._is_task_past_max_deferral(task, last_task):
             if earliest_bank_statements_task is None or self._task_should_be_prioritised(task, earliest_bank_statements_task):
                 earliest_bank_statements_task = task
         return earliest_bank_statements_task
@@ -201,11 +211,11 @@ class Queue:
         time_difference: timedelta = self._timestamp_for_task(first_task) - self._timestamp_for_task(last_task)
         return math.floor(abs(time_difference.total_seconds()))
 
-    def _sort_key(self, task: TaskSubmission) -> tuple:
+    def _sort_key(self, task: TaskSubmission, last_task: TaskSubmission) -> tuple:
         return (
                 self._priority_for_task(task),
                 self._earliest_group_timestamp_for_task(task),
-                self._execution_order_for_task(task),
+                self._execution_order_for_task(task, last_task),
                 self._timestamp_for_task(task),
             )
 
@@ -248,20 +258,18 @@ class Queue:
             return datetime.fromisoformat(timestamp).replace(tzinfo=None)
         return timestamp
 
-    def _is_task_past_max_deferral(self, task: TaskSubmission) -> bool:
-        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
-        last_task = sorted_tasks_by_timestamp[-1]
+    def _is_task_past_max_deferral(self, task: TaskSubmission, last_task: TaskSubmission) -> bool:
         task_age = self._get_time_in_seconds_between_tasks(task, last_task)
 
         return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
 
-    def _execution_order_for_task(self, task):
+    def _execution_order_for_task(self, task: TaskSubmission, last_task: TaskSubmission) -> int:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
 
         if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-        if self._is_task_past_max_deferral(task):
+        if self._is_task_past_max_deferral(task, last_task):
             return DEFAULT_EXECUTION_ORDER
 
         return provider.execution_order or DEFAULT_EXECUTION_ORDER
@@ -363,6 +371,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
