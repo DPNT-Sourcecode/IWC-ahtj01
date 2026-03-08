@@ -10,6 +10,7 @@ from solutions.IWC.task_submission_handler import TaskSubmissionHandler
 # LEGACY CODE ASSET
 # RESOLVED on deploy
 from solutions.IWC.task_types import TaskSubmission, TaskDispatch
+from solutions.IWC.utils import get_time_in_seconds_between_tasks
 
 
 class Queue:
@@ -48,7 +49,7 @@ class Queue:
             earliest_bank_statements_task = self._bank_statement_prioritiser.determine_earliest_bank_statement_task(task, earliest_bank_statements_task, last_task)
             self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
 
-        self._queue = sorted(self._queue, key=lambda t: self._queue_sorter.sort_key(t, last_task))
+        self._queue = sorted(self._queue, key=lambda t: self._queue_sorter.sort_key(t, self.age, last_task))
 
         # we've done the normal sorting
         # now we need to check if the next task due is a bank statement
@@ -118,15 +119,11 @@ class Queue:
         sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: t.timestamp)
         first_task = sorted_tasks_by_timestamp[0]
         last_task = sorted_tasks_by_timestamp[-1]
-        return self._get_time_in_seconds_between_tasks(first_task, last_task)
+        return get_time_in_seconds_between_tasks(first_task, last_task)
 
     def purge(self):
         self._queue.clear()
         return True
-
-    def _get_time_in_seconds_between_tasks(self, first_task: QueuedTask, last_task: QueuedTask) -> int:
-        time_difference: timedelta = first_task.timestamp - last_task.timestamp
-        return math.floor(abs(time_difference.total_seconds()))
 
 
 """

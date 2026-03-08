@@ -7,11 +7,11 @@ from solutions.IWC.queue_solution_legacy import Priority
 
 
 class QueueSorter:
-    def sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
+    def sort_key(self, task: QueuedTask, queue_age: int, last_task: QueuedTask) -> tuple:
         return (
                 self._priority_for_task(task),
                 self._earliest_group_timestamp_for_task(task),
-                self._execution_order_for_task(task, last_task),
+                self._execution_order_for_task(task, queue_age, last_task),
                 task.timestamp,
             )
 
@@ -30,10 +30,10 @@ class QueueSorter:
         return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
 
 
-    def _execution_order_for_task(self, task: QueuedTask, last_task: QueuedTask) -> int:
+    def _execution_order_for_task(self, task: QueuedTask, queue_age: int, last_task: QueuedTask) -> int:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
 
-        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
+        if queue_age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
         if self._is_task_past_max_deferral(task, last_task):

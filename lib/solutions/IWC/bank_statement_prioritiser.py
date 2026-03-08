@@ -1,6 +1,7 @@
 from solutions.IWC.constants import BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
 from solutions.IWC.models.queued_task import QueuedTask
 from solutions.IWC.providers import BANK_STATEMENTS_PROVIDER
+from solutions.IWC.utils import get_time_in_seconds_between_tasks
 
 
 class BankStatementPrioritiser:
@@ -31,6 +32,6 @@ class BankStatementPrioritiser:
 
 
     def _is_task_past_max_deferral(self, task: QueuedTask, last_task: QueuedTask) -> bool:
-        task_age = self._get_time_in_seconds_between_tasks(task, last_task)
+        task_age = get_time_in_seconds_between_tasks(task, last_task)
 
         return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
