@@ -1,12 +1,12 @@
 import math
-from dataclasses import field
 from datetime import datetime, timedelta
-from enum import IntEnum
 
-from solutions.IWC.constants import MAX_TIMESTAMP, DEFAULT_EXECUTION_ORDER, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
+from solutions.IWC.bank_statement_prioritiser import BankStatementPrioritiser
+from solutions.IWC.constants import MAX_TIMESTAMP, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
 from solutions.IWC.models.queued_task import QueuedTask
 from solutions.IWC.models.task_priority import Priority
 from solutions.IWC.providers import BANK_STATEMENTS_PROVIDER, REGISTERED_PROVIDERS
+from solutions.IWC.queue_sorter import QueueSorter
 # LEGACY CODE ASSET
 # RESOLVED on deploy
 from solutions.IWC.task_types import TaskSubmission, TaskDispatch
@@ -14,9 +14,13 @@ from solutions.IWC.task_types import TaskSubmission, TaskDispatch
 
 class Queue:
     _queue: list[QueuedTask]
+    _queue_sorter: QueueSorter
+    _bank_statement_prioritiser: BankStatementPrioritiser
 
     def __init__(self):
         self._queue = []
+        self._queue_sorter = QueueSorter()
+        self._bank_statement_prioritiser = BankStatementPrioritiser()
 
     def enqueue(self, item: TaskSubmission) -> int:
         # add any dependencies as additional tasks
@@ -47,10 +51,10 @@ class Queue:
 
         earliest_bank_statements_task: QueuedTask | None = None
         for task in self._queue:
-            earliest_bank_statements_task = self._determine_earliest_bank_statement_task(task, earliest_bank_statements_task, last_task)
+            earliest_bank_statements_task = self._bank_statement_prioritiser.determine_earliest_bank_statement_task(task, earliest_bank_statements_task, last_task)
             self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
 
-        self._queue = sorted(self._queue, key=lambda t: self._sort_key(t, last_task))
+        self._queue = sorted(self._queue, key=lambda t: self._queue_sorter.sort_key(t, last_task))
 
         # we've done the normal sorting
         # now we need to check if the next task due is a bank statement
@@ -82,18 +86,6 @@ class Queue:
             task_count[user_id] = len(user_tasks)
         return task_count, priority_timestamps
 
-    def _determine_earliest_bank_statement_task(self, task: QueuedTask, earliest_bank_statements_task: QueuedTask, last_task: QueuedTask) -> QueuedTask:
-        # if this is a bank statement task
-        # check if it's past its max deferral
-        # if it is, it's a candidate for running next, which will be sorted out when we order
-        # first, we need to check if there are any clashing timestamps
-        # we want to give preference to that task over any others
-        # but! normal sorting should still happen first
-        if task.provider == BANK_STATEMENTS_PROVIDER.name and self._is_task_past_max_deferral(task, last_task):
-            if earliest_bank_statements_task is None or self._task_should_be_prioritised(task, earliest_bank_statements_task):
-                earliest_bank_statements_task = task
-        return earliest_bank_statements_task
-
     def _determine_task_priority_and_update_timestamp(self, task: QueuedTask, task_count: dict[int, int], priority_timestamps: dict[int, datetime]):
         metadata = task.metadata
         current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -115,9 +107,6 @@ class Queue:
             metadata["group_earliest_timestamp"] = current_earliest
             metadata["priority"] = priority_level
 
-    def _should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask):
-        return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
-
     def _duplicate_task_exists(self, task: TaskSubmission) -> bool:
         existing_task = self._check_for_existing_task(task)
         if existing_task is not None:
@@ -136,12 +125,6 @@ class Queue:
                 1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
         metadata.setdefault('fifo_order', fifo_order)
 
-    def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:
-        if task.timestamp > earliest_task.timestamp:
-            return False
-        if task.timestamp < earliest_task.timestamp:
-            return True
-        return task.metadata["fifo_order"] < earliest_task.metadata["fifo_order"]
 
     @property
     def size(self):
@@ -190,7 +173,7 @@ class Queue:
 
         return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
 
-    def _check_for_existing_task(self, item: QueuedTask) -> QueuedTask | None:
+    def _check_for_existing_task(self, item: TaskSubmission) -> QueuedTask | None:
         if len(self._queue) == 0:
             return None
 
@@ -295,6 +278,7 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
 
