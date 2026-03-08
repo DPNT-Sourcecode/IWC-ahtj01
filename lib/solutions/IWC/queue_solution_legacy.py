@@ -54,7 +54,7 @@ REGISTERED_PROVIDERS: list[Provider] = [
 ]
 
 class Queue:
-    _queue: list[TaskSubmission] = []
+    _queue: list[TaskSubmission]
 
     def __init__(self):
         self._queue = []
@@ -76,16 +76,9 @@ class Queue:
         if self.size == 0:
             return None
 
-        user_ids = {task.user_id for task in self._queue}
-        task_count = {}
-        priority_timestamps = {}
-        earliest_bank_statements_task: TaskSubmission | None = None
-        for user_id in user_ids:
-            user_tasks = [t for t in self._queue if t.user_id == user_id]
-            earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
-            priority_timestamps[user_id] = earliest_timestamp
-            task_count[user_id] = len(user_tasks)
+        task_count, priority_timestamps = self._gather_user_tasks()
 
+        earliest_bank_statements_task: TaskSubmission | None = None
         for task in self._queue:
             metadata = task.metadata
             current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -138,6 +131,18 @@ class Queue:
             provider=task.provider,
             user_id=task.user_id,
         )
+
+    def _gather_user_tasks(self):
+        user_ids = {task.user_id for task in self._queue}
+        task_count = {}
+        priority_timestamps = {}
+        for user_id in user_ids:
+            user_tasks = [t for t in self._queue if t.user_id == user_id]
+            earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
+            priority_timestamps[user_id] = earliest_timestamp
+            task_count[user_id] = len(user_tasks)
+
+        return task_count, priority_timestamps
 
     def _should_override_next_task(self, next_task: TaskSubmission, earliest_bank_statements_task: TaskSubmission):
         return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
@@ -354,3 +359,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
