@@ -95,7 +95,7 @@ class Queue:
 
         task_count, priority_timestamps = self._gather_user_tasks()
 
-        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
+        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: t.timestamp)
         last_task = sorted_tasks_by_timestamp[-1]
 
         earliest_bank_statements_task: QueuedTask | None = None
@@ -381,10 +381,3 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
-
-
-
-
-
-
-
