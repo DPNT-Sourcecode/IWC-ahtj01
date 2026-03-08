@@ -108,12 +108,14 @@ class Queue:
             # first, we need to check if there are any clashing timestamps
             # we want to give preference to that task over any others
             # but! normal sorting should still happen first
-            # if (task.provider == BANK_STATEMENTS_PROVIDER.name):
-            #     task_due: bool = self._is_task_past_max_deferral(task)
-            #
-            #     if (earliest_bank_statements_task is None
-            #         or task_due and (self._task_should_be_prioritised(task, earliest_bank_statements_task))):
-            #         earliest_bank_statements_task = task
+            if task.provider == BANK_STATEMENTS_PROVIDER.name:
+                task_due: bool = self._is_task_past_max_deferral(task)
+
+                if task_due:
+                    if earliest_bank_statements_task is None:
+                        earliest_bank_statements_task = task
+                    elif self._task_should_be_prioritised(task, earliest_bank_statements_task):
+                        earliest_bank_statements_task = task
 
             try:
                 priority_level = Priority(raw_priority)
@@ -149,6 +151,10 @@ class Queue:
             provider=task.provider,
             user_id=task.user_id,
         )
+
+    def task_should_be_prioritised(self, task, earliest_task):
+        
+
 
     @property
     def size(self):
@@ -337,3 +343,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
