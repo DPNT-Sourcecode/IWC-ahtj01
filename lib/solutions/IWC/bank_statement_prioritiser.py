@@ -20,7 +20,7 @@ class BankStatementPrioritiser:
 
 
     def should_override_next_task(self, next_task: QueuedTask, earliest_bank_statements_task: QueuedTask):
-        return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
+        return earliest_bank_statements_task and next_task.timestamp > earliest_bank_statements_task.timestamp
 
 
     def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:

@@ -280,7 +280,7 @@ def test_IWC_R5_S5() -> None:
         call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(2),
         call_enqueue("id_verification", 6, iso_ts(delta_minutes=6)).expect(3),
         call_size().expect(3),
-        call_dequeue().expect("companies_house", 1),
         call_dequeue().expect("bank_statements", 1),
+        call_dequeue().expect("companies_house", 1),
         call_dequeue().expect("id_verification", 6),
     ])
