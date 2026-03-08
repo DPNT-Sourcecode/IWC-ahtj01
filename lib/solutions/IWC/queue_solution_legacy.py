@@ -1,69 +1,16 @@
 import math
-from dataclasses import dataclass, field
+from dataclasses import field
 from datetime import datetime, timedelta
 from enum import IntEnum
 
+from solutions.IWC.constants import MAX_TIMESTAMP, DEFAULT_EXECUTION_ORDER, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
+from solutions.IWC.models.queued_task import QueuedTask
+from solutions.IWC.models.task_priority import Priority
+from solutions.IWC.providers import BANK_STATEMENTS_PROVIDER, REGISTERED_PROVIDERS
 # LEGACY CODE ASSET
 # RESOLVED on deploy
 from solutions.IWC.task_types import TaskSubmission, TaskDispatch
 
-class Priority(IntEnum):
-    """Represents the queue ordering tiers observed in the legacy system."""
-    HIGH = 1
-    NORMAL = 2
-
-@dataclass
-class Provider:
-    name: str
-    base_url: str
-    depends_on: list[str]
-    """Modifier to the order in which tasks will be executed."""
-    execution_order: int
-
-MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
-DEFAULT_EXECUTION_ORDER = 1
-BANK_STATEMENTS_EXECUTION_ORDER = 2
-BANK_STATEMENTS_MAX_DEFERRAL_SECONDS = 300
-
-COMPANIES_HOUSE_PROVIDER = Provider(
-    name="companies_house", base_url="https://fake.companieshouse.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
-)
-
-
-CREDIT_CHECK_PROVIDER = Provider(
-    name="credit_check",
-    base_url="https://fake.creditcheck.co.uk",
-    depends_on=["companies_house"],
-    execution_order=DEFAULT_EXECUTION_ORDER
-)
-
-
-BANK_STATEMENTS_PROVIDER = Provider(
-    name="bank_statements", base_url="https://fake.bankstatements.co.uk", depends_on=[], execution_order=BANK_STATEMENTS_EXECUTION_ORDER
-)
-
-ID_VERIFICATION_PROVIDER = Provider(
-    name="id_verification", base_url="https://fake.idv.co.uk", depends_on=[], execution_order=DEFAULT_EXECUTION_ORDER
-)
-
-REGISTERED_PROVIDERS: list[Provider] = [
-    BANK_STATEMENTS_PROVIDER,
-    COMPANIES_HOUSE_PROVIDER,
-    CREDIT_CHECK_PROVIDER,
-    ID_VERIFICATION_PROVIDER,
-]
-
-class QueuedTask:
-    provider: str
-    user_id: int
-    timestamp: datetime
-    metadata: dict[str, object] = field(default_factory=dict)
-
-    def __init__(self, provider: str, user_id: int, timestamp: datetime, metadata: dict[str, object] | None = None):
-        self.provider = provider
-        self.user_id = user_id
-        self.timestamp = timestamp
-        self.metadata = metadata or {}
 
 class Queue:
     _queue: list[QueuedTask]
@@ -221,13 +168,7 @@ class Queue:
         time_difference: timedelta = first_task.timestamp - last_task.timestamp
         return math.floor(abs(time_difference.total_seconds()))
 
-    def _sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
-        return (
-                self._priority_for_task(task),
-                self._earliest_group_timestamp_for_task(task),
-                self._execution_order_for_task(task, last_task),
-                task.timestamp,
-            )
+
 
     def _collect_dependencies(self, task: TaskSubmission) -> list[TaskSubmission]:
         provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
@@ -245,44 +186,11 @@ class Queue:
             tasks.append(dependency_task)
         return tasks
 
-    @staticmethod
-    def _priority_for_task(task):
-        metadata = task.metadata
-        raw_priority = metadata.get("priority", Priority.NORMAL)
-        try:
-            return Priority(raw_priority)
-        except (TypeError, ValueError):
-            return Priority.NORMAL
-
-    @staticmethod
-    def _earliest_group_timestamp_for_task(task: QueuedTask):
-        metadata = task.metadata
-        return metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
-
-    @staticmethod
-    def _timestamp_for_task(task: QueuedTask) -> datetime | None:
-        timestamp = task.timestamp
-        if isinstance(timestamp, datetime):
-            return timestamp.replace(tzinfo=None)
-        if isinstance(timestamp, str):
-            return datetime.fromisoformat(timestamp).replace(tzinfo=None)
-        return timestamp
 
     def _is_task_past_max_deferral(self, task: QueuedTask, last_task: QueuedTask) -> bool:
         task_age = self._get_time_in_seconds_between_tasks(task, last_task)
 
         return task_age >= BANK_STATEMENTS_MAX_DEFERRAL_SECONDS
-
-    def _execution_order_for_task(self, task: QueuedTask, last_task: QueuedTask) -> int:
-        provider = next((p for p in REGISTERED_PROVIDERS if p.name == task.provider), None)
-
-        if self.age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
-            return provider.execution_order or DEFAULT_EXECUTION_ORDER
-
-        if self._is_task_past_max_deferral(task, last_task):
-            return DEFAULT_EXECUTION_ORDER
-
-        return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
     def _check_for_existing_task(self, item: QueuedTask) -> QueuedTask | None:
         if len(self._queue) == 0:
@@ -298,6 +206,14 @@ class Queue:
             )
             existing_task.timestamp = earliest_task_datetime.astimezone().replace(tzinfo=None)
 
+    @staticmethod
+    def _timestamp_for_task(task: QueuedTask) -> datetime | None:
+        timestamp = task.timestamp
+        if isinstance(timestamp, datetime):
+            return timestamp.replace(tzinfo=None)
+        if isinstance(timestamp, str):
+            return datetime.fromisoformat(timestamp).replace(tzinfo=None)
+        return timestamp
 """
 ===================================================================================================
 

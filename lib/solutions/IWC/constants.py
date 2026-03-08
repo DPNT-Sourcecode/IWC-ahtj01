@@ -1,0 +1,6 @@
+from datetime import datetime
+
+MAX_TIMESTAMP = datetime.max.replace(tzinfo=None)
+DEFAULT_EXECUTION_ORDER = 1
+BANK_STATEMENTS_EXECUTION_ORDER = 2
+BANK_STATEMENTS_MAX_DEFERRAL_SECONDS = 300
