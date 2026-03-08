@@ -178,7 +178,7 @@ class Queue:
             return True
         return False
 
-    def _set_task_metadata(self, task: QueuedTask):
+    def _set_task_metadata(self, task: TaskSubmission):
         metadata = task.metadata
         metadata.setdefault("priority", Priority.NORMAL)
         metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -186,7 +186,7 @@ class Queue:
         fifo_order = 1
         if task.provider == BANK_STATEMENTS_PROVIDER.name:
             fifo_order = 1 + sum(
-                1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == task.timestamp)
+                1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
         metadata.setdefault('fifo_order', fifo_order)
 
     def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:
@@ -381,5 +381,6 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
 
