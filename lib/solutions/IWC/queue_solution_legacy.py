@@ -80,10 +80,6 @@ class Queue:
 
         earliest_bank_statements_task: TaskSubmission | None = None
         for task in self._queue:
-            metadata = task.metadata
-            current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
-            raw_priority = metadata.get("priority")
-
             # if this is a bank statement task
             # check if it's past its max deferral
             # if it is, it's a candidate for running next, which will be sorted out when we order
@@ -94,22 +90,7 @@ class Queue:
                 if earliest_bank_statements_task is None or self._task_should_be_prioritised(task, earliest_bank_statements_task):
                     earliest_bank_statements_task = task
 
-            try:
-                priority_level = Priority(raw_priority)
-            except (TypeError, ValueError):
-                priority_level = None
-
-            if priority_level is None or priority_level == Priority.NORMAL:
-                metadata["group_earliest_timestamp"] = MAX_TIMESTAMP
-                if task_count[task.user_id] >= 3:
-                    metadata["group_earliest_timestamp"] = priority_timestamps[task.user_id]
-                    metadata["priority"] = Priority.HIGH
-                else:
-                    metadata["priority"] = Priority.NORMAL
-            else:
-                metadata["group_earliest_timestamp"] = current_earliest
-                metadata["priority"] = priority_level
-
+            self._determine_task_priority_and_update_timestamp(task, task_count, priority_timestamps)
 
         self._queue = sorted(self._queue, key=self._sort_key)
 
@@ -141,8 +122,28 @@ class Queue:
             earliest_timestamp = sorted(user_tasks, key=lambda t: t.timestamp)[0].timestamp
             priority_timestamps[user_id] = earliest_timestamp
             task_count[user_id] = len(user_tasks)
-
         return task_count, priority_timestamps
+
+    def _determine_task_priority_and_update_timestamp(self, task: TaskSubmission, task_count: dict[int, int], priority_timestamps: dict[int, datetime]):
+        metadata = task.metadata
+        current_earliest = metadata.get("group_earliest_timestamp", MAX_TIMESTAMP)
+        raw_priority = metadata.get("priority")
+
+        try:
+            priority_level = Priority(raw_priority)
+        except (TypeError, ValueError):
+            priority_level = None
+
+        if priority_level is None or priority_level == Priority.NORMAL:
+            metadata["group_earliest_timestamp"] = MAX_TIMESTAMP
+            if task_count[task.user_id] >= 3:
+                metadata["group_earliest_timestamp"] = priority_timestamps[task.user_id]
+                metadata["priority"] = Priority.HIGH
+            else:
+                metadata["priority"] = Priority.NORMAL
+        else:
+            metadata["group_earliest_timestamp"] = current_earliest
+            metadata["priority"] = priority_level
 
     def _should_override_next_task(self, next_task: TaskSubmission, earliest_bank_statements_task: TaskSubmission):
         return next_task.provider == BANK_STATEMENTS_PROVIDER.name and earliest_bank_statements_task and next_task.timestamp == earliest_bank_statements_task.timestamp
@@ -359,4 +360,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
