@@ -17,8 +17,9 @@ class TaskSubmissionHandler:
         tasks_to_queue: list[QueuedTask] = []
         for task in tasks:
             if self._duplicate_task_exists(task, queued_tasks):
+                continue
 
-            self._set_task_metadata(task)
+            self._set_task_metadata(task, queued_tasks)
 
             tasks_to_queue.append(QueuedTask(
                 provider=task.provider,
@@ -30,23 +31,23 @@ class TaskSubmissionHandler:
 
 
     def _duplicate_task_exists(self, task: TaskSubmission, queued_tasks: Sequence[QueuedTask]) -> bool:
-        existing_task = self._check_for_existing_task(task)
+        existing_task = self._check_for_existing_task(task, queued_tasks)
         if existing_task is not None:
             self._update_timestamp_for_existing_task(existing_task=existing_task, new_task=task)
             return True
         return False
 
-    def _check_for_existing_task(self, item: TaskSubmission) -> QueuedTask | None:
-        if len(self._queue) == 0:
+    def _check_for_existing_task(self, item: TaskSubmission, queued_tasks: Sequence[QueuedTask]) -> QueuedTask | None:
+        if len(queued_tasks) == 0:
             return None
 
-        existing_task = next((t for t in self._queue if t.provider == item.provider and t.user_id == item.user_id), None)
+        existing_task = next((t for t in queued_tasks if t.provider == item.provider and t.user_id == item.user_id), None)
         return existing_task
 
-    def update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: QueuedTask) -> None:
+    def _update_timestamp_for_existing_task(self, existing_task: QueuedTask, new_task: TaskSubmission) -> None:
             earliest_task_datetime: datetime = min(
                 existing_task.timestamp,
-                new_task.timestamp
+                self._timestamp_for_task(new_task)
             )
             existing_task.timestamp = earliest_task_datetime.astimezone().replace(tzinfo=None)
 
@@ -77,8 +78,7 @@ class TaskSubmissionHandler:
         return tasks
 
 
-
-    def _set_task_metadata(self, task: TaskSubmission):
+    def _set_task_metadata(self, task: TaskSubmission, queued_tasks: Sequence[QueuedTask]):
         metadata = task.metadata
         metadata.setdefault("priority", Priority.NORMAL)
         metadata.setdefault("group_earliest_timestamp", MAX_TIMESTAMP)
@@ -86,6 +86,6 @@ class TaskSubmissionHandler:
         fifo_order = 1
         if task.provider == BANK_STATEMENTS_PROVIDER.name:
             fifo_order = 1 + sum(
-                1 for t in self._queue if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
+                1 for t in queued_tasks if t.provider == BANK_STATEMENTS_PROVIDER.name and t.timestamp == self._timestamp_for_task(task))
         metadata.setdefault('fifo_order', fifo_order)
 
