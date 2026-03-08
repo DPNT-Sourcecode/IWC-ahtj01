@@ -190,9 +190,9 @@ class Queue:
         metadata.setdefault('fifo_order', fifo_order)
 
     def _task_should_be_prioritised(self, task: QueuedTask, earliest_task: QueuedTask) -> bool:
-        if self._timestamp_for_task(task) > self._timestamp_for_task(earliest_task):
+        if task.timestamp > earliest_task.timestamp:
             return False
-        if self._timestamp_for_task(task) < self._timestamp_for_task(earliest_task):
+        if task.timestamp < earliest_task.timestamp:
             return True
         return task.metadata["fifo_order"] < earliest_task.metadata["fifo_order"]
 
@@ -208,7 +208,7 @@ class Queue:
         if self.size == 0:
             return 0
 
-        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: self._timestamp_for_task(t))
+        sorted_tasks_by_timestamp = sorted(self._queue, key=lambda t: t.timestamp)
         first_task = sorted_tasks_by_timestamp[0]
         last_task = sorted_tasks_by_timestamp[-1]
         return self._get_time_in_seconds_between_tasks(first_task, last_task)
@@ -218,7 +218,7 @@ class Queue:
         return True
 
     def _get_time_in_seconds_between_tasks(self, first_task: QueuedTask, last_task: QueuedTask) -> int:
-        time_difference: timedelta = self._timestamp_for_task(first_task) - self._timestamp_for_task(last_task)
+        time_difference: timedelta = first_task.timestamp - last_task.timestamp
         return math.floor(abs(time_difference.total_seconds()))
 
     def _sort_key(self, task: QueuedTask, last_task: QueuedTask) -> tuple:
@@ -226,7 +226,7 @@ class Queue:
                 self._priority_for_task(task),
                 self._earliest_group_timestamp_for_task(task),
                 self._execution_order_for_task(task, last_task),
-                self._timestamp_for_task(task),
+                task.timestamp,
             )
 
     def _collect_dependencies(self, task: TaskSubmission) -> list[TaskSubmission]:
@@ -381,3 +381,4 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
