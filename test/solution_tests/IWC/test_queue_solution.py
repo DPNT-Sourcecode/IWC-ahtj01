@@ -267,20 +267,20 @@ def test_limit_deferring_bank_statements_to_5_minutes_with_clashes() -> None:
         call_dequeue().expect("companies_house", 3),
     ])
 
-id = IWC_R5_S5_001, req = enqueue({"provider":"companies_house","timestamp":"2025-10-20 12:00:00","user_id":1}), resp = 1
-id = IWC_R5_S5_002, req = enqueue({"provider":"bank_statements","timestamp":"2025-10-20 12:00:00","user_id":1}), resp = 2
-id = IWC_R5_S5_003, req = enqueue({"provider":"id_verification","timestamp":"2025-10-20 12:06:00","user_id":6}), resp = 3
-id = IWC_R5_S5_004, req = dequeue(), resp = {"provider":"companies_house","user_id":1}
-id = IWC_R5_S5_005, req = dequeue(), resp = {"provider":"bank_statements","user_id":1}
-id = IWC_R5_S5_006, req = dequeue(), resp = {"provider":"id_verification","user_id":6}
+# id = IWC_R5_S5_001, req = enqueue({"provider":"companies_house","timestamp":"2025-10-20 12:00:00","user_id":1}), resp = 1
+# id = IWC_R5_S5_002, req = enqueue({"provider":"bank_statements","timestamp":"2025-10-20 12:00:00","user_id":1}), resp = 2
+# id = IWC_R5_S5_003, req = enqueue({"provider":"id_verification","timestamp":"2025-10-20 12:06:00","user_id":6}), resp = 3
+# id = IWC_R5_S5_004, req = dequeue(), resp = {"provider":"companies_house","user_id":1}
+# id = IWC_R5_S5_005, req = dequeue(), resp = {"provider":"bank_statements","user_id":1}
+# id = IWC_R5_S5_006, req = dequeue(), resp = {"provider":"id_verification","user_id":6}
 
-def test_IWC_R5_S5_001() -> None:
+def test_IWC_R5_S5() -> None:
     run_queue([
         call_enqueue("companies_house", 1, iso_ts(delta_minutes=0)).expect(1),
         call_enqueue("bank_statements", 1, iso_ts(delta_minutes=0)).expect(2),
-        call_enqueue("id_verification", 6, iso_ts(delta_minutes=0)).expect(3),
+        call_enqueue("id_verification", 6, iso_ts(delta_minutes=6)).expect(3),
         call_size().expect(3),
-        call_dequeue().expect("bank_statements", 1),
         call_dequeue().expect("companies_house", 1),
+        call_dequeue().expect("bank_statements", 1),
         call_dequeue().expect("id_verification", 6),
     ])
