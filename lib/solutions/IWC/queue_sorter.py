@@ -4,6 +4,7 @@ from solutions.IWC.constants import MAX_TIMESTAMP, BANK_STATEMENTS_MAX_DEFERRAL_
 from solutions.IWC.models.queued_task import QueuedTask
 from solutions.IWC.providers import REGISTERED_PROVIDERS, BANK_STATEMENTS_PROVIDER
 from solutions.IWC.queue_solution_legacy import Priority
+from solutions.IWC.utils import is_task_past_max_deferral
 
 
 class QueueSorter:
@@ -36,7 +37,7 @@ class QueueSorter:
         if queue_age < BANK_STATEMENTS_MAX_DEFERRAL_SECONDS or task.provider != BANK_STATEMENTS_PROVIDER.name:
             return provider.execution_order or DEFAULT_EXECUTION_ORDER
 
-        if self._is_task_past_max_deferral(task, last_task):
+        if is_task_past_max_deferral(task, last_task, BANK_STATEMENTS_MAX_DEFERRAL_SECONDS):
             return DEFAULT_EXECUTION_ORDER
 
         return provider.execution_order or DEFAULT_EXECUTION_ORDER
