@@ -296,7 +296,7 @@ class Queue:
                 existing_task.timestamp,
                 self._timestamp_for_task(new_task)
             )
-            existing_task.timestamp = earliest_task_datetime.astimezone()
+            existing_task.timestamp = earliest_task_datetime.astimezone().replace(tzinfo=None)
 
 """
 ===================================================================================================
@@ -381,4 +381,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
