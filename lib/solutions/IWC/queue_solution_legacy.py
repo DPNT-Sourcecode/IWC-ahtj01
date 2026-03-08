@@ -110,7 +110,6 @@ class Queue:
             # but! normal sorting should still happen first
             if task.provider == BANK_STATEMENTS_PROVIDER.name:
                 task_due: bool = self._is_task_past_max_deferral(task)
-
                 if task_due:
                     if earliest_bank_statements_task is None:
                         earliest_bank_statements_task = task
@@ -152,9 +151,12 @@ class Queue:
             user_id=task.user_id,
         )
 
-    def task_should_be_prioritised(self, task, earliest_task):
-        
-
+    def task_should_be_prioritised(self, task: TaskSubmission, earliest_task: TaskSubmission) -> bool:
+        if self._timestamp_for_task(task) > self._timestamp_for_task(earliest_task):
+            return False
+        if self._timestamp_for_task(task) < self._timestamp_for_task(earliest_task):
+            return True
+        return task.metadata["fifo_order"] < earliest_task.metadata["fifo_order"]
 
     @property
     def size(self):
@@ -343,4 +345,5 @@ async def queue_worker():
         logger.info(f"Finished task: {task}")
 ```
 """
+
 
